@@ -9,6 +9,7 @@ local _deploy = function(player, capsule_name, capsules_to_deploy)
   capsules_to_deploy = math.min(global.players[player.index].max_capsules, capsules_to_deploy)
 
   local deployed = player.remove_item({name=capsule_name, count=capsules_to_deploy})
+  player.force.item_production_statistics.on_flow(capsule_name, -deployed)
   for i = 1, deployed, 1 do
     local rad = (i/deployed + (game.tick%360)/360) * 2 * math.pi
     local x_offset = 10*math.cos(rad)
