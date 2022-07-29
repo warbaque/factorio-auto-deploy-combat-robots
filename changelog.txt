@@ -1,0 +1,14 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.0.2
+Date: 2022-07-29
+  Changes:
+    - Added configurable autodeploy enemy threshold
+    - Added shortcut button
+    - Added shortcut key
+    - Added player config for enemy threshold
+    - Added player config for max capsules to deploy
+---------------------------------------------------------------------------------------------------
+Version: 0.0.1
+Date: 2022-07-27
+  Changes:
+    - Initial release
