@@ -6,7 +6,7 @@ local _deploy = function(player, capsule_name, capsules_to_deploy)
     return false
   end
 
-  capsules_to_deploy = math.min(player.mod_settings["autodeploy-capsules-max"].value, capsules_to_deploy)
+  capsules_to_deploy = math.min(global.players[player.index].max_capsules, capsules_to_deploy)
 
   local deployed = player.remove_item({name=capsule_name, count=capsules_to_deploy})
   for i = 1, deployed, 1 do
@@ -45,12 +45,14 @@ local function floor(n, m)
 end
 
 local deploy_robots_for_player = function(player)
-  if not player.character or not global.players[player.index].autodeploy or _enemy_count(player) < player.mod_settings["autodeploy-enemy-threshold"].value then
+  local character = player.character
+
+  if not character or not global.players[player.index].autodeploy or _enemy_count(player) < global.players[player.index].enemy_threshold then
     return
   end
 
   local max_robots = game.forces.player.maximum_following_robot_count
-  local to_deploy = max_robots - #player.character.following_robots
+  local to_deploy = max_robots - #character.following_robots
 
   if not _deploy(player, 'destroyer-capsule', floor(to_deploy, 5)) then
     _deploy(player, 'defender-capsule', floor(to_deploy, 1))
@@ -60,21 +62,25 @@ end
 
 -- [ INIT ] --
 
+local _config = function(player)
+  return {
+    autodeploy = true,
+    enemy_threshold = player.mod_settings["autodeploy-enemy-threshold"].value,
+    max_capsules = player.mod_settings["autodeploy-capsules-max"].value
+  }
+end
+
 autodeploy.init = function()
   global.players = global.players or {}
   for i, player in (pairs(game.players)) do
     -- game.players[i].print("Autodeploy installed") -- Debug
-    global.players[i] = global.players[i] or {
-      autodeploy = true,
-    }
+    global.players[i] = global.players[i] or _config(player)
     player.set_shortcut_toggled("autodeploy-shortcut", global.players[i].autodeploy)
   end
 end
 
-autodeploy.on_player_created = function(event)
-  global.players[event.player_index] = {
-    autodeploy = true,
-  }
+autodeploy.set_player_config = function(event)
+  global.players[event.player_index] = _config(game.players[event.player_index])
 end
 
 
@@ -101,10 +107,8 @@ end
 --[ UPDATE ]--
 
 autodeploy.update = function()
-  if game.ticks_played > 0 and game.ticks_played % 100 == 0 then
-    for _, player in pairs(game.connected_players) do
-      deploy_robots_for_player(player)
-    end
+  for _, player in pairs(game.connected_players) do
+    deploy_robots_for_player(player)
   end
 end
 
