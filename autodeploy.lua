@@ -81,6 +81,9 @@ autodeploy.init = function()
 end
 
 autodeploy.set_player_config = function(event)
+  if event.setting_type ~= "runtime-per-user" or event.player_index == nil then
+    return
+  end
   global.players[event.player_index] = _config(game.players[event.player_index])
 end
 
