@@ -15,4 +15,9 @@ script.on_init(autodeploy.init)
 script.on_configuration_changed(autodeploy.init)
 
 script.on_event(defines.events.on_player_created, autodeploy.set_player_config)
-script.on_event(defines.events.on_runtime_mod_setting_changed, autodeploy.set_player_config)
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
+  if event.setting_type ~= "runtime-per-user" or event.player_index == nil then
+    return
+  end
+  autodeploy.set_player_config(event)
+end)
