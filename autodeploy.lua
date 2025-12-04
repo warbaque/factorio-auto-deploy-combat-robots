@@ -49,7 +49,7 @@ end
 local deploy_robots_for_player = function(player)
   local character = player.character
 
-  if not character or not global.players[player.index].autodeploy or _enemy_count(player) < global.players[player.index].enemy_threshold then
+  if not global or not global.players or not global.players[player.index] or not character or not global.players[player.index].autodeploy or _enemy_count(player) < global.players[player.index].enemy_threshold then
     return
   end
 
