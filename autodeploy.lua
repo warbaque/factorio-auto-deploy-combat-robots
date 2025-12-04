@@ -1,6 +1,5 @@
 local autodeploy = {}
 
-
 local _deploy = function(player, capsule_name, capsules_to_deploy)
   if not (capsules_to_deploy > 0) then
     return false
@@ -9,7 +8,9 @@ local _deploy = function(player, capsule_name, capsules_to_deploy)
   capsules_to_deploy = math.min(global.players[player.index].max_capsules, capsules_to_deploy)
 
   local deployed = player.remove_item({name=capsule_name, count=capsules_to_deploy})
-  player.force.item_production_statistics.on_flow(capsule_name, -deployed)
+  if deployed > 0 then
+    player.force.get_item_production_statistics(player.surface).on_flow(capsule_name, -deployed)
+  end
   for i = 1, deployed, 1 do
     local rad = (i/deployed + (game.tick%360)/360) * 2 * math.pi
     local x_offset = 10*math.cos(rad)
@@ -72,16 +73,18 @@ local _config = function(player)
 end
 
 autodeploy.init = function()
+  global = global or {}
   global.players = global.players or {}
   for i, player in (pairs(game.players)) do
-    -- game.players[i].print("Autodeploy installed") -- Debug
     global.players[i] = global.players[i] or _config(player)
     player.set_shortcut_toggled("autodeploy-shortcut", global.players[i].autodeploy)
   end
 end
 
 autodeploy.set_player_config = function(event)
-  global.players[event.player_index] = _config(game.players[event.player_index])
+  local config = _config(game.players[event.player_index])
+  global.players[event.player_index] = config
+  game.players[event.player_index].set_shortcut_toggled("autodeploy-shortcut", config.autodeploy)
 end
 
 
@@ -97,8 +100,8 @@ autodeploy.toggle = function(event)
 
   local status = not global.players[event.player_index].autodeploy
   global.players[event.player_index].autodeploy = status
-  player.surface.create_entity {
-    name = "flying-text", position = player.position,
+  player.create_local_flying_text {
+    position = player.position,
     text = _on_off(status)
   }
   player.set_shortcut_toggled("autodeploy-shortcut", status)
