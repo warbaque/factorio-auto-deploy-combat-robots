@@ -5,7 +5,7 @@ local _deploy = function(player, capsule_name, capsule_quality, capsules_to_depl
     return false
   end
 
-  capsules_to_deploy = math.min(storage.players[player.index].max_capsules, capsules_to_deploy)
+  capsules_to_deploy = math.min(storage.player_config[player.index].max_capsules, capsules_to_deploy)
 
   local deployed = player.remove_item({name=capsule_name, quality=capsule_quality, count=capsules_to_deploy})
   if deployed > 0 then
@@ -49,8 +49,9 @@ end
 
 local deploy_robots_for_player = function(player)
   local character = player.character
+  local config = storage.player_config[player.index]
 
-  if not storage.players[player.index] or not character or not storage.players[player.index].autodeploy or _enemy_count(player) < storage.players[player.index].enemy_threshold then
+  if not config or not character or not config.autodeploy or _enemy_count(player) < config.enemy_threshold then
     return
   end
 
@@ -89,37 +90,45 @@ local _config = function(player)
 end
 
 autodeploy.init = function()
-  storage.players = storage.players or {}
-  for i, player in (pairs(game.players)) do
-    storage.players[i] = storage.players[i] or _config(player)
-    player.set_shortcut_toggled("autodeploy-shortcut", storage.players[i].autodeploy)
+  storage.player_config = storage.player_config or {}
+  for i, _ in pairs(game.players) do
+    autodeploy.on_player_created({player_index = i})
   end
 end
 
-autodeploy.set_player_config = function(event)
-  local config = _config(game.players[event.player_index])
-  storage.players[event.player_index] = config
-  game.players[event.player_index].set_shortcut_toggled("autodeploy-shortcut", config.autodeploy)
+autodeploy.on_player_created = function(event)
+  storage.player_config[event.player_index] = storage.player_config[event.player_index] or _config(game.players[event.player_index])
+  game.players[event.player_index].set_shortcut_toggled("autodeploy-shortcut", storage.player_config[event.player_index].autodeploy)
+end
+
+autodeploy.on_runtime_mod_setting_changed = function(event)
+  if event.setting_type == "runtime-per-user" and event.player_index ~= nil then
+    local config = _config(game.players[event.player_index])
+    config.autodeploy = storage.player_config[event.player_index].autodeploy
+    storage.player_config[event.player_index] = config
+  end
 end
 
 
 --[ COMMANDS ]--
 
-local _on_off = function(value)
-  if value then return {"description.autodeploy_enable"}
-  else return {"description.autodeploy_disable"} end
-end
-
 autodeploy.toggle = function(event)
   local player = game.players[event.player_index]
+  local status = not storage.player_config[event.player_index].autodeploy
+  storage.player_config[event.player_index].autodeploy = status
 
-  local status = not storage.players[event.player_index].autodeploy
-  storage.players[event.player_index].autodeploy = status
   player.create_local_flying_text {
     position = player.position,
-    text = _on_off(status)
+    text = status and {"description.autodeploy_enable"} or {"description.autodeploy_disable"},
+    color = status and {r=0, g=1, b=0} or {r=1, g=0, b=0},
   }
   player.set_shortcut_toggled("autodeploy-shortcut", status)
+end
+
+autodeploy.on_lua_shortcut = function(event)
+  if event.prototype_name == "autodeploy-shortcut" then
+    autodeploy.toggle(event)
+  end
 end
 
 
