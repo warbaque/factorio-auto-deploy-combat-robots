@@ -5,14 +5,14 @@ local _deploy = function(player, capsule_name, capsule_quality, capsules_to_depl
     return false
   end
 
-  capsules_to_deploy = math.min(storage.player_config[player.index].max_capsules, capsules_to_deploy)
-
   local deployed = player.remove_item({name=capsule_name, quality=capsule_quality, count=capsules_to_deploy})
   if deployed > 0 then
     player.force.get_item_production_statistics(player.surface).on_flow({name=capsule_name, quality=capsule_quality}, -deployed)
   end
+
+  local offset = math.random()
   for i = 1, deployed, 1 do
-    local rad = (i/deployed + (game.tick%360)/360) * 2 * math.pi
+    local rad = (i/deployed + offset) * 2 * math.pi
     local x_offset = 10*math.cos(rad)
     local y_offset = 10*math.sin(rad)
     player.surface.create_entity({
@@ -63,15 +63,18 @@ local deploy_robots_for_player = function(player)
     {
       name = 'destroyer-capsule',
       per_capsule = 5,
+      per_second = 2
     },
     {
       name = 'defender-capsule',
       per_capsule = 1,
+      per_second = 4
     },
   }
   for _, bot in ipairs(combat_bots) do
     for _, quality in ipairs(qualities) do
-      if _deploy(player, bot.name, quality, floor(to_deploy, bot.per_capsule)) then
+      local group = math.ceil(storage.player_config[player.index].max_capsules * bot.per_second / 4)
+      if _deploy(player, bot.name, quality, math.floor(math.min(to_deploy / bot.per_capsule, group))) then
         return
       end
     end

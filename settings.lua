@@ -15,7 +15,7 @@ data:extend({
         name = "autodeploy-capsules-max",
         setting_type = "runtime-per-user",
         order = "ab",
-        default_value = 10,
+        default_value = 6,
         minimum_value = 1,
         maximum_value = 100,
     },
