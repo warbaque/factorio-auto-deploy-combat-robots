@@ -1,15 +1,15 @@
 local autodeploy = {}
 
-local _deploy = function(player, capsule_name, capsules_to_deploy)
+local _deploy = function(player, capsule_name, capsule_quality, capsules_to_deploy)
   if not (capsules_to_deploy > 0) then
     return false
   end
 
-  capsules_to_deploy = math.min(global.players[player.index].max_capsules, capsules_to_deploy)
+  capsules_to_deploy = math.min(storage.players[player.index].max_capsules, capsules_to_deploy)
 
-  local deployed = player.remove_item({name=capsule_name, count=capsules_to_deploy})
+  local deployed = player.remove_item({name=capsule_name, quality=capsule_quality, count=capsules_to_deploy})
   if deployed > 0 then
-    player.force.get_item_production_statistics(player.surface).on_flow(capsule_name, -deployed)
+    player.force.get_item_production_statistics(player.surface).on_flow({name=capsule_name, quality=capsule_quality}, -deployed)
   end
   for i = 1, deployed, 1 do
     local rad = (i/deployed + (game.tick%360)/360) * 2 * math.pi
@@ -17,6 +17,7 @@ local _deploy = function(player, capsule_name, capsules_to_deploy)
     local y_offset = 10*math.sin(rad)
     player.surface.create_entity({
       name=capsule_name,
+      quality=capsule_quality,
       force=player.force,
       position=player.position,
       speed=10,
@@ -49,15 +50,30 @@ end
 local deploy_robots_for_player = function(player)
   local character = player.character
 
-  if not global or not global.players or not global.players[player.index] or not character or not global.players[player.index].autodeploy or _enemy_count(player) < global.players[player.index].enemy_threshold then
+  if not storage.players[player.index] or not character or not storage.players[player.index].autodeploy or _enemy_count(player) < storage.players[player.index].enemy_threshold then
     return
   end
 
   local max_robots = game.forces.player.maximum_following_robot_count
   local to_deploy = max_robots - #character.following_robots
 
-  if not _deploy(player, 'destroyer-capsule', floor(to_deploy, 5)) then
-    _deploy(player, 'defender-capsule', floor(to_deploy, 1))
+  local qualities = {"legendary", "epic", "rare", "uncommon", "normal"}
+  local combat_bots = {
+    {
+      name = 'destroyer-capsule',
+      per_capsule = 5,
+    },
+    {
+      name = 'defender-capsule',
+      per_capsule = 1,
+    },
+  }
+  for _, bot in ipairs(combat_bots) do
+    for _, quality in ipairs(qualities) do
+      if _deploy(player, bot.name, quality, floor(to_deploy, bot.per_capsule)) then
+        return
+      end
+    end
   end
 end
 
@@ -73,17 +89,16 @@ local _config = function(player)
 end
 
 autodeploy.init = function()
-  global = global or {}
-  global.players = global.players or {}
+  storage.players = storage.players or {}
   for i, player in (pairs(game.players)) do
-    global.players[i] = global.players[i] or _config(player)
-    player.set_shortcut_toggled("autodeploy-shortcut", global.players[i].autodeploy)
+    storage.players[i] = storage.players[i] or _config(player)
+    player.set_shortcut_toggled("autodeploy-shortcut", storage.players[i].autodeploy)
   end
 end
 
 autodeploy.set_player_config = function(event)
   local config = _config(game.players[event.player_index])
-  global.players[event.player_index] = config
+  storage.players[event.player_index] = config
   game.players[event.player_index].set_shortcut_toggled("autodeploy-shortcut", config.autodeploy)
 end
 
@@ -98,8 +113,8 @@ end
 autodeploy.toggle = function(event)
   local player = game.players[event.player_index]
 
-  local status = not global.players[event.player_index].autodeploy
-  global.players[event.player_index].autodeploy = status
+  local status = not storage.players[event.player_index].autodeploy
+  storage.players[event.player_index].autodeploy = status
   player.create_local_flying_text {
     position = player.position,
     text = _on_off(status)
